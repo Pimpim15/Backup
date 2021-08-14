@@ -23,9 +23,11 @@ void *executaBackUp(void *args) {
 	ptr_thread_arg targ = (ptr_thread_arg)args;
 
 	int fd_origem = open(targ->pathOri, O_RDONLY);
-	int fd_destino = open(targ->pathDest, O_CREAT | O_TRUNC, O_RDWR);
+	int fd_destino = open(targ->pathDest, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXG | S_IRWXO | S_IRWXU);
 	
 	char bloco[BSIZE];
+	
+	//printf("\n%s; %s \n", targ->pathOri, targ->pathDest);
 	
 	while(1){
 		int n = read(fd_origem, bloco, BSIZE);
@@ -68,7 +70,7 @@ int main(int argc, char **argv) {
 			printf("--INICIANDO BACKUP --\n");		
 			
 			for(i = 2;i < n_origem;i++) {			
-				printf("Fazendo backup de: %s\n",nameList_origem[i]->d_name);
+				printf("\nFazendo backup de: %s\n",nameList_origem[i]->d_name);
 				
 				char path_origem[200];
 				strcpy(path_origem, argv[1]);
@@ -85,7 +87,7 @@ int main(int argc, char **argv) {
 				args.pathOri = path_origem;
 				args.pathDest = path_destino;
 				
-				printf("%s; %s \n", args.pathOri, args.pathDest);
+				//printf("%s; %s \n", args.pathOri, args.pathDest);
 				
 				pthread_t tid;
 				
@@ -93,8 +95,11 @@ int main(int argc, char **argv) {
 				
 				if(err != 0)
 					printf("\nnao foi possivel criar a thread: [%s]", strerror(err));
-				else
-					printf("\nnthread de backup iniciada com sucesso");
+				else{
+					printf("\nnthread de %s em %s iniciada com sucesso", args.pathOri, args.pathDest);
+					
+					pthread_join(tid, NULL);
+				}
 			}	
 				
 			sleep(3);
@@ -130,19 +135,22 @@ int main(int argc, char **argv) {
 					if(buffer_origem.st_mtime > buffer_destino.st_mtime) {
 						printf("(Arquivo desatualizado) Fazendo backup de: %s\n", nameList_origem[i]->d_name);
 						
-						thread_arg args;
+						thread_arg args2;
 						
-						args.pathOri = path_origem;
-						args.pathDest = path_destino;
+						args2.pathOri = path_origem;
+						args2.pathDest = path_destino;
 						
-						pthread_t tid;
+						pthread_t tid2;
 						
-						int err = pthread_create(&tid, NULL, executaBackUp, &args);
+						int err = pthread_create(&tid2, NULL, executaBackUp, &args2);
 						
 						if(err != 0)
 							printf("\nnao foi possivel criar a thread: [%s]", strerror(err));
-						else
+						else{
 							printf("\nnthread de backup iniciada com sucesso");
+							
+							pthread_join(tid2, NULL);
+						}
 						
 						break;
 					}
@@ -151,6 +159,36 @@ int main(int argc, char **argv) {
 			
 			if(foiEncontrado == 0) {
 				printf("(Nao foi encontrado) Fazendo backup de: %s\n", nameList_origem[i]->d_name);
+				
+				char path_origem[200];
+				strcpy(path_origem, argv[1]);
+				strcat(path_origem, "/");
+				strcat(path_origem, nameList_origem[i]->d_name);
+				
+				char path_destino[200];
+				strcpy(path_destino, argv[2]);
+				strcat(path_destino, "/");
+				strcat(path_destino, nameList_origem[i]->d_name);	
+				
+				//printf("\n%s; %s \n", path_origem, path_destino);
+								
+				thread_arg args3;
+						
+				args3.pathOri = path_origem;
+				args3.pathDest = path_destino;
+				
+				pthread_t tid3;
+				
+				int err = pthread_create(&tid3, NULL, executaBackUp, &args3);
+				
+				if(err != 0)
+					printf("\nnao foi possivel criar a thread: [%s]", strerror(err));
+				else{
+					printf("\nnthread de backup iniciada com sucesso");
+					
+					pthread_join(tid3, NULL);
+				}
+						
 			}
 			
 		}
