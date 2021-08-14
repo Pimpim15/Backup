@@ -23,12 +23,14 @@ void *executaBackUp(void *args) {
 	ptr_thread_arg targ = (ptr_thread_arg)args;
 
 	int fd_origem = open(targ->pathOri, O_RDONLY);
-	int fd_destino = open(targ->pathDest, O_CREAT | O_TRUNC);
+	int fd_destino = open(targ->pathDest, O_CREAT | O_TRUNC, O_RDWR);
 	
 	char bloco[BSIZE];
 	
 	while(1){
 		int n = read(fd_origem, bloco, BSIZE);
+		
+		printf("\nn = %d\n", n);
 		
 		if(n > 0){
 			write(fd_destino, bloco, n);
@@ -36,6 +38,8 @@ void *executaBackUp(void *args) {
 			break;
 		}
 	}
+	
+	printf("\nBackup concluido! \n");
 	
 	return NULL;
 }
@@ -65,6 +69,32 @@ int main(int argc, char **argv) {
 			
 			for(i = 2;i < n_origem;i++) {			
 				printf("Fazendo backup de: %s\n",nameList_origem[i]->d_name);
+				
+				char path_origem[200];
+				strcpy(path_origem, argv[1]);
+				strcat(path_origem, "/");
+				strcat(path_origem, nameList_origem[i]->d_name);
+				
+				char path_destino[200];
+				strcpy(path_destino, argv[2]);
+				strcat(path_destino, "/");
+				strcat(path_destino, nameList_origem[i]->d_name);
+				
+				thread_arg args;
+						
+				args.pathOri = path_origem;
+				args.pathDest = path_destino;
+				
+				printf("%s; %s \n", args.pathOri, args.pathDest);
+				
+				pthread_t tid;
+				
+				int err = pthread_create(&tid, NULL, executaBackUp, &args);
+				
+				if(err != 0)
+					printf("\nnao foi possivel criar a thread: [%s]", strerror(err));
+				else
+					printf("\nnthread de backup iniciada com sucesso");
 			}	
 				
 			sleep(3);
@@ -94,6 +124,8 @@ int main(int argc, char **argv) {
 									
 					stat(path_origem, &buffer_origem);
 					stat(path_destino, &buffer_destino);
+					
+					//printf("\n%s; %s \n", path_origem, path_destino);
 					
 					if(buffer_origem.st_mtime > buffer_destino.st_mtime) {
 						printf("(Arquivo desatualizado) Fazendo backup de: %s\n", nameList_origem[i]->d_name);
